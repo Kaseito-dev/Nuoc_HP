@@ -2,7 +2,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt, jwt_required
 from ..authz.require import require_permissions
 from .schemas import MeterCreate, MeterUpdate, MeterOut
-from .service import create_meter, get_meter, list_meters, update_meter, remove_meter
+from .service import create_meter_admin_only, get_meter, list_meters, update_meter, remove_meter
 from ...errors import BadRequest
 from ..common.response import json_ok, created, no_content
 from ..common.pagination import parse_pagination, build_links
@@ -18,11 +18,12 @@ def create():
         current_user = get_jwt()
         print("Current user claims:", current_user)
         data = MeterCreate(**(request.get_json(silent=True) or {}))
+        print("Parsed data:", data)
     except Exception as e:
         traceback.print_exc()
         raise BadRequest(f"Invalid request: {e}")
-    m = create_meter(data)
-    return created(f"/api/v1/meters/{m['id']}", MeterOut(**m).model_dump())
+    m = create_meter_admin_only(data)
+    return created(f"/api/v1/meters/{m.id}", m.model_dump())
 
 
 @bp.get("/")

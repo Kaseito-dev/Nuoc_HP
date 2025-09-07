@@ -3,6 +3,8 @@ from flask_jwt_extended import get_jwt, get_jwt_identity
 from datetime import datetime, timezone
 from ...extensions import get_db
 
+BLACKLIST = set()
+
 def _jwt_payload_to_doc(jwt_payload) -> dict:
     return {
         "jti": jwt_payload["jti"],

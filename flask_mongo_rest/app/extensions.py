@@ -63,9 +63,3 @@ def close_db(e=None):
     client = g.pop("mongo_client", None)
     if client:
         client.close()
-
-def init_jwt_blocklist_indexes(db):
-    # Lưu token bị logout vào collection jwt_blocklist
-    # TTL tự xoá khi hết hạn
-    db.jwt_blocklist.create_index([("jti", ASCENDING)], unique=True, name="uniq_jti")
-    db.jwt_blocklist.create_index("exp", expireAfterSeconds=0, name="ttl_exp")  # xoá sau khi exp <= now

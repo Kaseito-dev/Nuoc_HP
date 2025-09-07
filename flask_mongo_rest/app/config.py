@@ -1,8 +1,6 @@
 
 import os
 
-JWT_ACCESS_TOKEN_EXPIRES = 1800      # 30 phút
-JWT_REFRESH_TOKEN_EXPIRES = 2592000
 class BaseConfig:
     MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
     MONGO_DB  = os.getenv("MONGO_DB", "Nuoc_HP")

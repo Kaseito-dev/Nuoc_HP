@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class MeterCreate(BaseModel):
-    branch_id: Optional[str] = None 
+    branch_name: Optional[str] = None 
     meter_name: str = Field(min_length=1, max_length=200)
     installation_time: Optional[datetime] = None  # Dùng datetime thay vì str
 

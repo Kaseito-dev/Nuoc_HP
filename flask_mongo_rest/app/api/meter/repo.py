@@ -3,7 +3,11 @@ from typing import Optional, Dict, Any, List, Tuple
 from bson import ObjectId
 from ...extensions import get_db
 from ...utils.bson import to_object_id, oid_str
-
+from datetime import datetime
+from werkzeug.exceptions import NotFound, Conflict
+from ...extensions import get_db
+from pymongo import errors
+import hashlib
 COL = "meters"
 
 # def insert(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -22,6 +26,49 @@ def _db_to_api(d: dict) -> dict:
             d[key] = oid_str(d[key])
     return d
 
+def _meter_id_from_name(meter_name: str) -> str:
+    # md5 đơn giản, ổn định, không phụ thuộc DB
+    return hashlib.md5(meter_name.strip().encode("utf-8")).hexdigest()
+
+def find_branch_by_name(branch_name: str) -> Dict[str, Any]:
+    db = get_db()
+    b = db.branches.find_one({"name": branch_name})
+    print(f"Finding branch by name '{branch_name}':", b)
+    if not b:
+        raise NotFound(f"Branch '{branch_name}' not found")
+    return b
+
+def exists_meter_by_branchid_meterid(branch_id: ObjectId, meter_id: str) -> bool:
+    db = get_db()
+    return db[COL].find_one({"branch_id": branch_id, "meter_id": meter_id}) is not None
+
+def insert_meter(branch_id: ObjectId, meter_name: str, installation_time: Optional[datetime]) -> Dict[str, Any]:
+    """Insert theo (branch_id + meter_id từ meter_name)."""
+    db = get_db()
+    meter_id = _meter_id_from_name(meter_name)
+
+    if exists_meter_by_branchid_meterid(branch_id, meter_id):
+        raise Conflict("Meter already exists in this branch")
+
+    doc = {
+        "branch_id": branch_id,
+        "meter_id": meter_id,
+        "meter_name": meter_name.strip(),
+        "installation_time": installation_time or datetime.utcnow(),
+    }
+    try:
+        res = db[COL].insert_one(doc)
+    except errors.DuplicateKeyError as e:
+        # Nếu 2 request song song, unique index sẽ chặn ở đây
+        raise ("Meter already exists in this branch") from e
+
+    return {
+        "id": str(res.inserted_id),
+        "branch_id": str(branch_id),
+        "meter_id": meter_id,
+        "meter_name": doc["meter_name"],
+        "installation_time": doc["installation_time"].isoformat(),
+    }
 def insert(doc: dict) -> dict:
     payload = {
         "branch_id": to_object_id(doc["branch_id"]),

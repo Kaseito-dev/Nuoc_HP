@@ -3,7 +3,9 @@ from flask_jwt_extended import get_jwt_identity
 from ...extensions import get_db
 from ...utils.bson import to_object_id, oid_str
 from ...errors import BadRequest
-from .schemas import MeterCreate, MeterUpdate
+from .schemas import MeterCreate, MeterUpdate, MeterOut
+from werkzeug.exceptions import NotFound, Conflict, Forbidden
+from datetime import datetime
 from . import repo
 from flask_jwt_extended import get_jwt
 
@@ -18,32 +20,30 @@ def _branch_ids_in_company(company_id):
     db = get_db()
     return [oid_str(b["_id"]) for b in db.branches.find({"company_id": company_id}, {"_id":1})]
 
-def create_meter(data: MeterCreate):
-    company_id, user_branch_id, role_id = _get_user_scope()
+def _role_name() -> str:
+    claims = get_jwt()
+    return claims.get("role_name")
 
-    if user_branch_id:
-        # branch manager/staff
-        target_branch_id = user_branch_id
-        if data.branch_id and data.branch_id != target_branch_id:
-            raise BadRequest("Not allowed to create meter in another branch")
-    elif company_id:
-        # company manager
-        if not data.branch_id:
-            raise BadRequest("branch_id is required")
-        if data.branch_id not in _branch_ids_in_company(company_id):
-            raise BadRequest("Not allowed to create meter outside your company")
-        target_branch_id = data.branch_id
-    else:
-        # admin
-        if not data.branch_id:
-            raise BadRequest("branch_id is required")
-        target_branch_id = data.branch_id
+def create_meter_admin_only(data: MeterCreate) -> MeterOut:
+    print("Creating meter with data:", data)
+    if _role_name() != "admin":
+        raise Forbidden("Only admin can create meter")
 
-    return repo.insert({
-        "branch_id": target_branch_id,
-        "meter_name": data.meter_name,
-        "installation_time": data.installation_time,
-    })
+    branch = repo.find_branch_by_name(data.branch_name)  # dùng data.branch_name
+
+    if repo.exists_meter_by_branchid_meterid(
+        branch["_id"], repo._meter_id_from_name(data.meter_name)
+    ):
+        print(repo.exists_meter_by_branchid_meterid(
+        branch["_id"], repo._meter_id_from_name(data.meter_name)
+    ))
+        raise Conflict(
+            f"Meter '{data.meter_name}' already exists in branch '{branch['name']}'"
+        )
+
+    doc = repo.insert_meter(branch["_id"], data.meter_name, data.installation_time)
+    doc["branch_name"] = branch["name"]
+    return MeterOut(**doc)
 
 def get_meter(mid: str):
     company_id, branch_id, role_id = _get_user_scope()
