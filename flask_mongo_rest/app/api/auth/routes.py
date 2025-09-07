@@ -5,6 +5,7 @@ from .service import  validate_login
 from ...errors import BadRequest
 from ..common.response import json_ok
 import traceback
+from .blocklist import add_current_token_to_blocklist
 
 bp = Blueprint("auth", __name__, url_prefix="auth")
 
@@ -40,6 +41,18 @@ def login():
         "refresh_token": refresh,
         "user": u  # trả luôn thông tin user cho FE nếu muốn
     })
+@bp.post("/logout")
+@jwt_required()  # yêu cầu access token hợp lệ
+def logout():
+    add_current_token_to_blocklist()
+    return json_ok({"message": "Logged out"})
+
+# Đăng xuất refresh: revoke REFRESH TOKEN (nếu bạn dùng refresh flow)
+@bp.post("/logout-refresh")
+@jwt_required(refresh=True)
+def logout_refresh():
+    add_current_token_to_blocklist()
+    return json_ok({"message": "Refresh token revoked"})
 
 
 @bp.post("/refresh")
