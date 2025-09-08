@@ -14,14 +14,26 @@ def create_app(env: str = "dev") -> Flask:
 
     CORS(app)
     
+    
+    app.register_blueprint(api_v1)
+    jwt.init_app(app)
+    register_error_handlers(app)
 
     with app.app_context():
+        list_routes(app)
         db = get_db()
         init_indexes(db)
     
 
     app.teardown_appcontext(close_db)
-    app.register_blueprint(api_v1)
-    register_error_handlers(app)
-    jwt.init_app(app)
     return app
+
+def list_routes(app: Flask):
+    print("Registered routes:")
+    output = []
+    for rule in app.url_map.iter_rules():
+        methods = ",".join(sorted(m for m in rule.methods if m not in ("HEAD", "OPTIONS")))
+        line = f"{rule.endpoint:30s} {methods:15s} -> {rule.rule}"
+        output.append(line)
+    for line in sorted(output):
+        print(line)

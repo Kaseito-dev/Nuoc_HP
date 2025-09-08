@@ -1,32 +1,35 @@
 
+import traceback
 from flask import Blueprint, request
 from .schemas import UserCreate, UserUpdate, UserOut
-from .service import  get_user, list_user, update_user_info, remove_user
 from ...errors import BadRequest
 from ..common.response import json_ok, created, no_content
 from ..common.pagination import parse_pagination, build_links
 from flask_jwt_extended import jwt_required
 from ..authz.require import require_permissions
-
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from pydantic import ValidationError
+from .schemas import UserCreate
+from .service import *
 
 bp = Blueprint("users", __name__)
 
-# @bp.post("/")
-# @jwt_required()
-# @require_permissions("user.write")
-# def create():
-#     payload = request.get_json(silent=True) or {}
-#     try:
-#         data = UserCreate(**payload)
-#     except Exception as e:
-#         raise BadRequest(str(e))
-#     user = create_user(data)
-#     location = f"/api/v1/users/{user['id']}"
-#     return created(location, UserOut(**user).model_dump())
+@bp.post("/")
+@jwt_required()
+@require_permissions("user:create")
+def create_user():
+    try:
+        payload = UserCreate(**request.get_json(force=True))
+    except ValidationError as e:
+        return jsonify({"error": "ValidationError", "details": e.errors()}), 422
+
+    user = create_user_admin_only(payload)
+    return jsonify(user.model_dump()), 201
 
 @bp.get("/")
 @jwt_required()
-@require_permissions("user.read")
+@require_permissions("user:read")
 def list_():
     page, page_size = parse_pagination(request.args)
     q = request.args.get("q")
@@ -42,30 +45,31 @@ def list_():
 
 @bp.get("/<string:uid>")
 @jwt_required()
-@require_permissions("user.read")
+@require_permissions("user:read")
 def detail(uid):
     user = get_user(uid)
     if not user:
         return json_ok({"error": {"code": "NOT_FOUND", "message": "Not found"}}, 404)
     return json_ok(UserOut(**user).model_dump())
 
+
 @bp.patch("/<string:uid>")
 @jwt_required()
-@require_permissions("user.write")
-def update(uid):
-    payload = request.get_json(silent=True) or {}
+@require_permissions("user:update")
+def update_user(uid):
+    print(f"Updating user {uid}...")
     try:
-        data = UserUpdate(**payload)
-    except Exception as e:
-        raise BadRequest(str(e))
-    user = update_user_info(uid, data)
-    if not user:
-        return json_ok({"error": {"code": "NOT_FOUND", "message": "Not found"}}, 404)
-    return json_ok(UserOut(**user).model_dump())
+        payload = UserUpdate(**request.get_json(force=True))
+    except ValidationError as e:
+        print(traceback.format_exc())
+        return jsonify({"error": "ValidationError", "details": e.errors()}), 422
+
+    user = update_user_admin_only(uid, payload)
+    return jsonify(user.model_dump()), 200
 
 @bp.delete("/<string:uid>")
 @jwt_required()
-@require_permissions("user.write")
+@require_permissions("user:delete")
 def remove(uid):
     ok = remove_user(uid)
     return no_content() if ok else json_ok({"error": {"code": "NOT_FOUND", "message": "Not found"}}, 404)

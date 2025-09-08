@@ -6,6 +6,7 @@ from .user_meter.routes import bp as user_meter
 from .auth.routes import bp as auth_bp
 from .meter.routes import bp as meter_bp
 from .branches.routes import bp as branches_bp
+from .common.routes import bp as stats_bp
 
 
 api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
@@ -15,3 +16,4 @@ api_v1.register_blueprint(user_meter, url_prefix="/user-meter")
 api_v1.register_blueprint(auth_bp, url_prefix="/auth")
 api_v1.register_blueprint(meter_bp, url_prefix="/meters")
 api_v1.register_blueprint(branches_bp, url_prefix="/branches")
+api_v1.register_blueprint(stats_bp, url_prefix="/stats")

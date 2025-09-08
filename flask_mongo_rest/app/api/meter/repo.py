@@ -69,6 +69,7 @@ def insert_meter(branch_id: ObjectId, meter_name: str, installation_time: Option
         "meter_name": doc["meter_name"],
         "installation_time": doc["installation_time"].isoformat(),
     }
+
 def insert(doc: dict) -> dict:
     payload = {
         "branch_id": to_object_id(doc["branch_id"]),
@@ -84,9 +85,12 @@ def insert(doc: dict) -> dict:
 
 def get(mid: str) -> Optional[Dict[str, Any]]:
     d = get_db()[COL].find_one({"_id": to_object_id(mid)})
+    print("Get meter by ID:", mid, "Result:", d)
     if not d: return None
     d["id"] = oid_str(d.pop("_id"))
+    print("Found meter document:", d)
     d["branch_id"] = oid_str(d["branch_id"])
+    print("Converted meter document:", d)
     return d
 
 def list_paginated(page:int, page_size:int, branch_ids: Optional[list[str]], q: Optional[str], sort: Optional[str]) -> Tuple[List[Dict[str,Any]], bool]:

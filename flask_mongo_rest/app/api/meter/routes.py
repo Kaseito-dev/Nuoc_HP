@@ -7,7 +7,7 @@ from ...errors import BadRequest
 from ..common.response import json_ok, created, no_content
 from ..common.pagination import parse_pagination, build_links
 import traceback
-bp = Blueprint("meters", __name__)
+bp = Blueprint("meters", __name__, url_prefix="meters")
 
 @bp.post("/")
 @jwt_required()
@@ -44,10 +44,12 @@ def list_():
 @jwt_required()
 @require_permissions("meter:create")
 def update(mid):
+    print(f"Updating meter {mid}...")
     try:
         data = MeterUpdate(**(request.get_json(silent=True) or {}))
     except Exception as e:
         raise BadRequest(str(e))
+    print("Parsed update data:", data)
     m = update_meter(mid, data)
     return json_ok(MeterOut(**m).model_dump()) if m else json_ok({"error":{"code":"NOT_FOUND","message":"Not found"}}, 404)
 

@@ -44,6 +44,10 @@ def seed_permissions_roles():
         {"key": "meter:create",  "description": "Tạo đồng hồ"},
         {"key": "meter:update",  "description": "Sửa đồng hồ"},
         {"key": "meter:delete",  "description": "Xóa đồng hồ"},
+        {"key": "user:read",     "description": "Xem người dùng"},
+        {"key": "user:create",   "description": "Tạo người dùng"},
+        {"key": "user:update",   "description": "Sửa người dùng"},
+        {"key": "user:delete",   "description": "Xóa người dùng"},
     ]
     for p in perms:
         upsert("permissions", {"key": p["key"]}, p)
@@ -78,12 +82,13 @@ def seed_permissions_roles():
     # company_manager: CHỈ READ
     bind("company_manager", [
         "branch:read",
+        "user:read",
         "meter:read",
     ])
 
     # branch_manager: CHỈ READ
     bind("branch_manager", [
-        "branch:read",
+        "user:read",
         "meter:read",
     ])
 

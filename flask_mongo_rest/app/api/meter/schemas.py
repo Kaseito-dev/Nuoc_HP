@@ -8,6 +8,7 @@ class MeterCreate(BaseModel):
     installation_time: Optional[datetime] = None  # Dùng datetime thay vì str
 
 class MeterUpdate(BaseModel):
+    branch_name: Optional[str] = None 
     meter_name: Optional[str] = Field(None, min_length=1, max_length=200)
     installation_time: Optional[datetime] = None
 
