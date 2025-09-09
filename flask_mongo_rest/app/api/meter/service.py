@@ -58,7 +58,7 @@ def get_meter(mid: str):
     return m
 
 def list_meters(page:int, page_size:int, q: Optional[str], sort: Optional[str]):
-    company_id, branch_id, role_id = _get_user_scope()
+    company_id, branch_id, role_id, role_name = _get_user_scope()
     if branch_id:
         return repo.list_paginated(page, page_size, [oid_str(branch_id)], q, sort)
     if company_id:
@@ -121,7 +121,7 @@ def update_meter(mid: str, data: MeterUpdate):
     return repo.get(mid)
 
 def remove_meter(mid: str):
-    company_id, branch_id, role_id = _get_user_scope()
+    company_id, branch_id, role_id, role_name = _get_user_scope()
     cur = repo.get(mid)
     if not cur: return False
     if branch_id and cur["branch_id"] != oid_str(branch_id):

@@ -1,9 +1,13 @@
-from flask import Blueprint, request
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from .schemas import  LoginIn, UserPublic
 from .service import  validate_login
 from ...errors import BadRequest
 from ..common.response import json_ok
+from ...extensions import get_db
+from bson import ObjectId
+import bcrypt as bc
+
 import traceback
 
 bp = Blueprint("auth", __name__, url_prefix="auth")
@@ -43,8 +47,10 @@ def login():
 
 
 @bp.post("/refresh")
-@jwt_required(refresh=True)
+@jwt_required()
 def refresh():
     uid = get_jwt_identity()
     return json_ok({"access_token": create_access_token(identity=uid)})
+
+
 

@@ -6,7 +6,7 @@ from ...errors import BadRequest
 from ..common.response import json_ok, created, no_content
 from ..common.pagination import parse_pagination, build_links
 from flask_jwt_extended import jwt_required
-from ..authz.require import require_permissions
+from ..authz.require import require_permissions, require_password_confirmation
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from pydantic import ValidationError
@@ -17,6 +17,7 @@ bp = Blueprint("users", __name__)
 
 @bp.post("/")
 @jwt_required()
+@require_password_confirmation()
 @require_permissions("user:create")
 def create_user():
     try:
@@ -55,6 +56,7 @@ def detail(uid):
 
 @bp.patch("/<string:uid>")
 @jwt_required()
+@require_password_confirmation()
 @require_permissions("user:update")
 def update_user(uid):
     print(f"Updating user {uid}...")
@@ -69,6 +71,7 @@ def update_user(uid):
 
 @bp.delete("/<string:uid>")
 @jwt_required()
+@require_password_confirmation()
 @require_permissions("user:delete")
 def remove(uid):
     ok = remove_user(uid)

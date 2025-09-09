@@ -48,6 +48,9 @@ def seed_permissions_roles():
         {"key": "user:create",   "description": "Tạo người dùng"},
         {"key": "user:update",   "description": "Sửa người dùng"},
         {"key": "user:delete",   "description": "Xóa người dùng"},
+        {"key": "log:read",      "description": "Xem nhật ký hệ thống"},
+        {"key": "log:create",    "description": "Tạo nhật ký hệ thống"},
+        {"key": "log:delete",    "description": "Xóa nhật ký hệ thống"},
     ]
     for p in perms:
         upsert("permissions", {"key": p["key"]}, p)

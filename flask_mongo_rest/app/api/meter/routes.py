@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt, jwt_required
-from ..authz.require import require_permissions
+from ..authz.require import require_permissions, require_password_confirmation
 from .schemas import MeterCreate, MeterUpdate, MeterOut
 from .service import create_meter_admin_only, get_meter, list_meters, update_meter, remove_meter
 from ...errors import BadRequest
@@ -11,6 +11,7 @@ bp = Blueprint("meters", __name__, url_prefix="meters")
 
 @bp.post("/")
 @jwt_required()
+@require_password_confirmation()
 @require_permissions("meter:create")
 def create():
     print("Creating meter...")
@@ -28,7 +29,7 @@ def create():
 
 @bp.get("/")
 @jwt_required()
-@require_permissions(['meter:update', 'meter:delete', 'meter:create'])
+@require_permissions(["meter:read"])
 def list_():
     page, page_size = parse_pagination(request.args)
     q = request.args.get("q")
@@ -42,7 +43,8 @@ def list_():
 
 @bp.patch("/<string:mid>")
 @jwt_required()
-@require_permissions("meter:create")
+@require_password_confirmation()
+@require_permissions("meter:update")
 def update(mid):
     print(f"Updating meter {mid}...")
     try:
@@ -51,10 +53,12 @@ def update(mid):
         raise BadRequest(str(e))
     print("Parsed update data:", data)
     m = update_meter(mid, data)
+    print("Updated meter:", m)
     return json_ok(MeterOut(**m).model_dump()) if m else json_ok({"error":{"code":"NOT_FOUND","message":"Not found"}}, 404)
 
 @bp.delete("/<string:mid>")
 @jwt_required()
+@require_password_confirmation()
 @require_permissions("meter:delete")
 def remove(mid):
     ok = remove_meter(mid)

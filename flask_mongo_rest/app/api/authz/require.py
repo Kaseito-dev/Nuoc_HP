@@ -1,7 +1,9 @@
 from functools import wraps
 from flask import jsonify
-from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, jwt_required
+from flask import request
 from .repo import load_permissions_for_user
+from ..auth.utils import validate_current_user_password
 
 def _flatten_to_str_set(*items) -> set[str]:
     """Nhận tuple args có thể lẫn list/tuple/set và chuỗi, flatten 1–2 cấp,
@@ -87,6 +89,24 @@ def require_any(*options):
                     "message": "Permission required",
                     "details": sorted(options_set)
                 }}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return deco
+
+def require_password_confirmation(json_key: str = "password"):
+    """
+    Dùng: @jwt_required() + @require_password_confirmation()
+    Expect JSON body có {"password": "..."} (hoặc key tuỳ đổi)
+    """
+    def deco(fn):
+        @wraps(fn)
+        @jwt_required()
+        def wrapper(*args, **kwargs):
+            data = request.get_json(silent=True) or {}
+            plain = data.get(json_key)
+            ok, resp, _ = validate_current_user_password(plain)
+            if not ok:
+                return resp, 401
             return fn(*args, **kwargs)
         return wrapper
     return deco
