@@ -61,6 +61,7 @@ def detail(uid):
 def update_user(uid):
     print(f"Updating user {uid}...")
     try:
+        print("Parsed update data:", request.get_json())
         payload = UserUpdate(**request.get_json(force=True))
     except ValidationError as e:
         print(traceback.format_exc())

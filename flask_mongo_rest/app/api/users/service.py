@@ -21,7 +21,7 @@ def create_user_admin_only(data: UserCreate) -> UserOut:
     role = repo.find_role_by_name(data.role_name)
     out = repo.insert_user(
         username=data.user_name,
-        password_hash=_hash_password(data.password),
+        password_hash=_hash_password(data.password_user),
         role_id=role["_id"],
         role_name=role["role_name"],
     )

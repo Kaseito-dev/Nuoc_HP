@@ -4,7 +4,7 @@ from typing import Optional
 
 class UserCreate(BaseModel):
     user_name: str = Field(min_length=1, max_length=120)
-    password: str = Field(min_length=6, max_length=120)
+    password_user: str = Field(min_length=6, max_length=120)
     role_name: str = Field(min_length=1, max_length=50)
 
 class UserUpdate(BaseModel):
