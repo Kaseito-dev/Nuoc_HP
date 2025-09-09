@@ -14,6 +14,4 @@ class LogOut(BaseModel):
     severity: str
     message: str
     created_time: str
-    company_id: Optional[str] = None
-    branch_id: Optional[str] = None
     meta: Optional[Dict[str, Any]] = None
