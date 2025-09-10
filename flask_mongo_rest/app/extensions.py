@@ -63,3 +63,11 @@ def close_db(e=None):
     client = g.pop("mongo_client", None)
     if client:
         client.close()
+
+# nơi lưu jti bị block
+TOKEN_BLOCKLIST = set()
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    jti = jwt_payload["jti"]
+    return jti in TOKEN_BLOCKLIST

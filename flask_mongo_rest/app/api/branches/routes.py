@@ -57,4 +57,4 @@ def update(bid):
 @require_permissions("branch:delete")
 def remove(bid):
     ok = remove_branch(bid)
-    return no_content() if ok else json_ok({"error":{"code":"NOT_FOUND","message":"Not found"}}, 404)
+    return json_ok() if ok else json_ok({"error":{"code":"NOT_FOUND","message":"Not found"}}, 404)

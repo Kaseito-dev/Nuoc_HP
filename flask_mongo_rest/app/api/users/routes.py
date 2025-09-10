@@ -76,4 +76,8 @@ def update_user(uid):
 @require_permissions("user:delete")
 def remove(uid):
     ok = remove_user(uid)
-    return no_content() if ok else json_ok({"error": {"code": "NOT_FOUND", "message": "Not found"}}, 404)
+    return (
+        (jsonify({"status": "ok"}), 200)
+        if ok
+        else (jsonify({"error": {"code": "NOT_FOUND", "message": "Not found"}}), 404)
+    )

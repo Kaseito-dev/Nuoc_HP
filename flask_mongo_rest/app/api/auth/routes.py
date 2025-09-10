@@ -7,7 +7,7 @@ from ..common.response import json_ok
 from ...extensions import get_db
 from bson import ObjectId
 import bcrypt as bc
-
+from ...extensions import TOKEN_BLOCKLIST
 import traceback
 
 bp = Blueprint("auth", __name__, url_prefix="auth")
@@ -52,5 +52,12 @@ def refresh():
     uid = get_jwt_identity()
     return json_ok({"access_token": create_access_token(identity=uid)})
 
+
+@bp.post("/logout")
+@jwt_required()
+def logout():
+    jti = get_jwt()["jti"]   # lấy JWT ID của token hiện tại
+    TOKEN_BLOCKLIST.add(jti)
+    return jsonify({"msg": "Successfully logged out"}), 200
 
 

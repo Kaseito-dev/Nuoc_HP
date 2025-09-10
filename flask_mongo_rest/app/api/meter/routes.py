@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required
 from ..authz.require import require_permissions, require_password_confirmation
 from .schemas import MeterCreate, MeterUpdate, MeterOut
@@ -62,4 +62,8 @@ def update(mid):
 @require_permissions("meter:delete")
 def remove(mid):
     ok = remove_meter(mid)
-    return no_content() if ok else json_ok({"error":{"code":"NOT_FOUND","message":"Not found"}}, 404)
+    return (
+    (jsonify({"status": "ok"}), 200)
+    if ok
+    else (jsonify({"error": {"code": "NOT_FOUND", "message": "Not found"}}), 404)
+)
