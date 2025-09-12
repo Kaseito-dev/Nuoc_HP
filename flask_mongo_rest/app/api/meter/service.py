@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any, List, Tuple
 from flask_jwt_extended import get_jwt_identity
 from ...extensions import get_db
 from ...utils.bson import to_object_id, oid_str
@@ -7,7 +7,11 @@ from .schemas import MeterCreate, MeterUpdate, MeterOut
 from werkzeug.exceptions import NotFound, Conflict, Forbidden
 from datetime import datetime
 from . import repo
+from ..predictions.repo import count_distinct_leak_meters_in_day
 from flask_jwt_extended import get_jwt
+from bson import ObjectId
+from ...utils.time_utils import day_bounds_utc
+from flask import  request, jsonify
 
 def _get_user_scope():
     claims = get_jwt()
@@ -130,3 +134,52 @@ def remove_meter(mid: str):
         if cur["branch_id"] not in _branch_ids_in_company(company_id):
             return False
     return repo.delete(mid)
+
+def get_meters_list(date_str: str | None = None):
+    """
+    Lấy danh sách đồng hồ và trạng thái dự đoán trong ngày.
+    - Nếu truyền date_str (YYYY-MM-DD) thì lấy đúng ngày đó
+    - Nếu không truyền thì mặc định hôm nay (theo giờ VN)
+    """
+    return repo.list_meters_with_status(date_str)
+
+def build_leak_overview(
+                        start_utc,
+                        end_utc,
+                        branch_id: Optional[ObjectId] = None) -> Dict[str, Any]:
+    """
+    Tạo overview:
+      - total_meters
+      - leak_meters (distinct theo meter_id trong ngày)
+      - normal_meters = total - leak
+    Có thể truyền branch_id để giới hạn theo chi nhánh (nếu sau này bạn cần).
+    """
+    total = repo.count_total_meters( branch_id=branch_id)
+    leak  = count_distinct_leak_meters_in_day( start_utc, end_utc, branch_id=branch_id)
+    return {
+        "total_meters": total,
+        "leak_meters": leak,
+        "normal_meters": max(0, total - leak),
+    }
+
+@bp.get("/count/leak-overview")
+def leak_overview():
+    """
+    Tổng toàn hệ thống (KHÔNG phân tầng):
+      - total_meters
+      - leak_meters (distinct theo meter_id trong ngày)
+      - normal_meters
+    Query: ?date=YYYY-MM-DD (mặc định: hôm nay theo Asia/Ho_Chi_Minh)
+    """
+    db = get_db()
+    try:
+        date_q = request.args.get("date")
+        date_str, start_utc, end_utc = day_bounds_utc(date_q)
+
+        result = build_leak_overview(db, start_utc, end_utc)
+        return jsonify({"success": True, "date": date_str, **result}), 200
+
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid date format. Use YYYY-MM-DD"}), 400
+    except Exception:
+        return jsonify({"success": False, "error": "Internal server error"}), 500

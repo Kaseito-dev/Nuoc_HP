@@ -7,6 +7,7 @@ from .meter.routes import bp as meter_bp
 from .branches.routes import bp as branches_bp
 from .common.routes import bp as stats_bp
 from .log.routes import bp as logs_bp
+from .measurements.routes import bp as meas_bp
 
 
 api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
@@ -18,3 +19,4 @@ api_v1.register_blueprint(meter_bp, url_prefix="/meters")
 api_v1.register_blueprint(branches_bp, url_prefix="/branches")
 api_v1.register_blueprint(stats_bp, url_prefix="/stats")
 api_v1.register_blueprint(logs_bp, url_prefix="/logs")
+api_v1.register_blueprint(meas_bp, url_prefix="/meters")

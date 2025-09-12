@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any, List, Tuple
-
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from bson import ObjectId
 from ...extensions import get_db
 from ...utils.bson import to_object_id, oid_str
@@ -8,6 +9,7 @@ from werkzeug.exceptions import NotFound, Conflict
 from ...extensions import get_db
 from pymongo import errors
 import hashlib
+from bson import ObjectId
 COL = "meters"
 
 # def insert(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,3 +127,75 @@ def update(mid: str, patch: Dict[str, Any]) -> bool:
 def delete(mid: str) -> bool:
     res = get_db()[COL].delete_one({"_id": to_object_id(mid)})
     return res.deleted_count == 1
+
+
+def list_meters_with_status(date_str: str | None = None) -> List[Dict[str, Any]]:
+    db = get_db()
+
+    # Nếu không truyền thì mặc định hôm nay theo giờ VN
+    vn = ZoneInfo("Asia/Ho_Chi_Minh")
+    if not date_str:
+        date_str = datetime.now(vn).strftime("%Y-%m-%d")
+
+    # Tính khoảng thời gian UTC cho ngày đó
+    d = datetime.strptime(date_str, "%Y-%m-%d").date()
+    start_local = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=vn)
+    end_local   = start_local + timedelta(days=1)
+    start_utc, end_utc = start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "branches",
+                "localField": "branch_id",
+                "foreignField": "_id",
+                "as": "branch"
+            }
+        },
+        {"$unwind": "$branch"},
+        {
+            "$lookup": {
+                "from": "predictions",                 
+                "let": {"mid": "$_id"},
+                "pipeline": [
+                    { 
+                        "$match": { 
+                            "$expr": { "$eq": ["$meter_id", "$$mid"] },
+                            "prediction_time": {"$gte": start_utc, "$lt": end_utc}
+                        } 
+                    },
+                    { "$sort": { "prediction_time": -1 } },
+                    { "$limit": 1 }
+                ],
+                "as": "prediction"
+            }
+        },
+        { "$unwind": { "path": "$prediction", "preserveNullAndEmptyArrays": True } },
+        {
+            "$project": {
+                "_id": 0,
+                "id": { "$toString": "$_id" },
+                "meter_name": 1,
+                "address": "$branch.address",
+                "status": { "$ifNull": ["$prediction.predicted_label", "no_prediction"] },
+                "prediction_time": "$prediction.prediction_time"
+            }
+        }
+    ]
+    
+    result = list(db[COL].aggregate(pipeline))
+    for doc in result:
+        for k, v in doc.items():
+            if isinstance(v, ObjectId):
+                doc[k] = str(v)
+    return result
+
+def count_total_meters(branch_id: Optional[ObjectId] = None) -> int:
+    """
+    Đếm tổng số đồng hồ. Nếu truyền branch_id thì giới hạn theo chi nhánh.
+    """
+    db = get_db()
+    query = {}
+    if branch_id:
+        query["branch_id"] = branch_id
+    return db[COL].count_documents(query)

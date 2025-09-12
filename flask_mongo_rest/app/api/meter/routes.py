@@ -2,11 +2,16 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required
 from ..authz.require import require_permissions, require_password_confirmation
 from .schemas import MeterCreate, MeterUpdate, MeterOut
-from .service import create_meter_admin_only, get_meter, list_meters, update_meter, remove_meter
-from ...errors import BadRequest
+from .service import create_meter_admin_only, get_meter, list_meters, update_meter, remove_meter, get_meters_list, build_leak_overview
 from ..common.response import json_ok, created, no_content
 from ..common.pagination import parse_pagination, build_links
+from werkzeug.exceptions import BadRequest
+from typing import Optional, Dict, Any, List, Tuple
 import traceback
+from ...errors import BadRequest
+from datetime import datetime
+from...utils.time_utils import day_bounds_utc
+
 bp = Blueprint("meters", __name__, url_prefix="meters")
 
 @bp.post("/")
@@ -53,7 +58,6 @@ def update(mid):
         raise BadRequest(str(e))
     print("Parsed update data:", data)
     m = update_meter(mid, data)
-    print("Updated meter:", m)
     return json_ok(MeterOut(**m).model_dump()) if m else json_ok({"error":{"code":"NOT_FOUND","message":"Not found"}}, 404)
 
 @bp.delete("/<string:mid>")
@@ -67,3 +71,36 @@ def remove(mid):
     if ok
     else (jsonify({"error": {"code": "NOT_FOUND", "message": "Not found"}}), 404)
 )
+
+@bp.get("/with_status/")
+@jwt_required()
+@require_permissions("branch:read")
+def list_meters():
+    date_str = request.args.get("date")   # ví dụ: /with_status/?date=2025-09-12
+    items = get_meters_list(date_str)
+    return jsonify({"items": items}), 200
+
+@bp.get("/count/leak-overview")
+@jwt_required()
+@require_permissions("meter:read")
+def leak_overview():
+    """
+    Tổng toàn hệ thống :
+      - total_meters
+      - leak_meters (distinct theo meter_id trong ngày)
+      - normal_meters
+    Query: ?date=YYYY-MM-DD (mặc định: hôm nay theo Asia/Ho_Chi_Minh)
+    """
+    try:
+        date_q = request.args.get("date")
+        date_str, start_utc, end_utc = day_bounds_utc(date_q)
+
+        result = build_leak_overview(start_utc, end_utc)
+        return jsonify({"success": True, "date": date_str, **result}), 200
+
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid date format. Use YYYY-MM-DD"}), 400
+    except Exception:
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+

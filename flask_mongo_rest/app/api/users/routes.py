@@ -6,7 +6,7 @@ from ...errors import BadRequest
 from ..common.response import json_ok, created, no_content
 from ..common.pagination import parse_pagination, build_links
 from flask_jwt_extended import jwt_required
-from ..authz.require import require_permissions, require_password_confirmation
+from ..authz.require import *
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from pydantic import ValidationError
@@ -59,9 +59,7 @@ def detail(uid):
 @require_password_confirmation()
 @require_permissions("user:update")
 def update_user(uid):
-    print(f"Updating user {uid}...")
     try:
-        print("Parsed update data:", request.get_json())
         payload = UserUpdate(**request.get_json(force=True))
     except ValidationError as e:
         print(traceback.format_exc())
