@@ -18,7 +18,7 @@ bp = Blueprint("users", __name__)
 @bp.post("/")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("user:create")
+@require_role("admin")
 def create_user():
     try:
         payload = UserCreate(**request.get_json(force=True))
@@ -30,7 +30,7 @@ def create_user():
 
 @bp.get("/")
 @jwt_required()
-@require_permissions("user:read")
+@require_role(["admin", "company_manager"])
 def list_():
     page, page_size = parse_pagination(request.args)
     q = request.args.get("q")
@@ -46,7 +46,7 @@ def list_():
 
 @bp.get("/<string:uid>")
 @jwt_required()
-@require_permissions("user:read")
+@require_role(["admin", "company_manager", "branch_manager"])
 def detail(uid):
     user = get_user(uid)
     if not user:
@@ -57,7 +57,7 @@ def detail(uid):
 @bp.patch("/<string:uid>")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("user:update")
+@require_role("admin")
 def update_user(uid):
     try:
         payload = UserUpdate(**request.get_json(force=True))
@@ -71,7 +71,7 @@ def update_user(uid):
 @bp.delete("/<string:uid>")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("user:delete")
+@require_role("admin")
 def remove(uid):
     ok = remove_user(uid)
     return (

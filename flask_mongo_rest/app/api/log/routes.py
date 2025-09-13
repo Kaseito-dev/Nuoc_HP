@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from .service import get_logs_scoped, delete_log_scoped
-from ..authz.require import require_permissions, require_password_confirmation
+from ..authz.require import require_permissions, require_password_confirmation, require_role
 from pydantic import ValidationError
 from .schemas import LogCreate
 from .service import create_log_scoped
@@ -10,7 +10,7 @@ bp = Blueprint("logs", __name__, url_prefix="/logs")
 
 @bp.get("/")
 @jwt_required()
-@require_permissions("log:read")
+@require_role(["admin", "company_manager", "branch_manager"])
 def list_logs_api():
     print("Listing logs...")
     page  = request.args.get("page", 1, type=int)
@@ -23,7 +23,7 @@ def list_logs_api():
 
 @bp.delete("/<log_id>")
 @require_password_confirmation()
-@require_permissions("log:delete")
+@require_role("admin")
 @jwt_required()  
 def delete_log(log_id):
     delete_log_scoped(log_id)
@@ -32,7 +32,7 @@ def delete_log(log_id):
 @bp.post("")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("log:create")
+@require_role(["admin"])
 def create_log():
     data = request.get_json(silent=True) or {}
     try:

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required
-from ..authz.require import require_permissions, require_password_confirmation
+from ..authz.require import *
 from .schemas import MeterCreate, MeterUpdate, MeterOut
 from .service import create_meter_admin_only, get_meter, list_meters, update_meter, remove_meter, get_meters_list, build_leak_overview
 from ..common.response import json_ok, created, no_content
@@ -17,7 +17,7 @@ bp = Blueprint("meters", __name__, url_prefix="meters")
 @bp.post("/")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("meter:create")
+@require_role("admin")
 def create():
     print("Creating meter...")
     try:
@@ -34,7 +34,7 @@ def create():
 
 @bp.get("/")
 @jwt_required()
-@require_permissions(["meter:read"])
+@require_role(["admin", "company_manager", "branch_manager"])
 def list_():
     page, page_size = parse_pagination(request.args)
     q = request.args.get("q")
@@ -49,7 +49,7 @@ def list_():
 @bp.patch("/<string:mid>")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("meter:update")
+@require_role("admin")
 def update(mid):
     print(f"Updating meter {mid}...")
     try:
@@ -63,7 +63,7 @@ def update(mid):
 @bp.delete("/<string:mid>")
 @jwt_required()
 @require_password_confirmation()
-@require_permissions("meter:delete")
+@require_role("admin")
 def remove(mid):
     ok = remove_meter(mid)
     return (
@@ -74,7 +74,7 @@ def remove(mid):
 
 @bp.get("/with_status/")
 @jwt_required()
-@require_permissions("branch:read")
+@require_role(["admin", "company_manager"])
 def list_meters():
     date_str = request.args.get("date")   # ví dụ: /with_status/?date=2025-09-12
     items = get_meters_list(date_str)
@@ -82,7 +82,7 @@ def list_meters():
 
 @bp.get("/count/leak-overview")
 @jwt_required()
-@require_permissions("meter:read")
+@require_role(["admin", "company_manager"])
 def leak_overview():
     """
     Tổng toàn hệ thống :

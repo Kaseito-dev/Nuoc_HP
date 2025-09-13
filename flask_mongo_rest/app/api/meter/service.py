@@ -161,25 +161,3 @@ def build_leak_overview(
         "leak_meters": leak,
         "normal_meters": max(0, total - leak),
     }
-
-@bp.get("/count/leak-overview")
-def leak_overview():
-    """
-    Tổng toàn hệ thống (KHÔNG phân tầng):
-      - total_meters
-      - leak_meters (distinct theo meter_id trong ngày)
-      - normal_meters
-    Query: ?date=YYYY-MM-DD (mặc định: hôm nay theo Asia/Ho_Chi_Minh)
-    """
-    db = get_db()
-    try:
-        date_q = request.args.get("date")
-        date_str, start_utc, end_utc = day_bounds_utc(date_q)
-
-        result = build_leak_overview(db, start_utc, end_utc)
-        return jsonify({"success": True, "date": date_str, **result}), 200
-
-    except ValueError:
-        return jsonify({"success": False, "error": "Invalid date format. Use YYYY-MM-DD"}), 400
-    except Exception:
-        return jsonify({"success": False, "error": "Internal server error"}), 500
