@@ -5,7 +5,7 @@ from bson import ObjectId
 from ...extensions import get_db
 from ...utils.bson import to_object_id, oid_str
 from datetime import datetime
-from werkzeug.exceptions import NotFound, Conflict
+from werkzeug.exceptions import NotFound, Conflict, BadRequest
 from ...extensions import get_db
 from pymongo import errors
 import hashlib
@@ -124,9 +124,36 @@ def update(mid: str, patch: Dict[str, Any]) -> bool:
     res = get_db()[COL].update_one({"_id": to_object_id(mid)}, {"$set": patch})
     return res.matched_count == 1
 
-def delete(mid: str) -> bool:
-    res = get_db()[COL].delete_one({"_id": to_object_id(mid)})
-    return res.deleted_count == 1
+def delete(mid: str) -> dict:
+    db = get_db()
+    try:
+        oid = to_object_id(mid)
+    except Exception:
+        raise BadRequest("Invalid meter id")
+
+    result = {}
+
+    # 1) Xoá meter chính
+    res = db[COL].delete_one({"_id": oid})
+    result["meters"] = res.deleted_count
+
+    # 2) Query cho các collection con: chấp nhận cả ObjectId và string
+    id_query = {"$in": [oid, str(oid)]}
+
+    # 3) Xoá liên quan (đổi lại tên collection/field nếu của bạn khác)
+    related = [
+        ("meter_measurements",      "meter_id"),
+        ("meter_manual_thresholds", "meter_id"),
+        ("meter_repairs",           "meter_id"),
+        ("meter_consumptions",      "meter_id"),
+    ]
+    for col, field in related:
+        r = db[col].delete_many({field: id_query})
+        result[col] = r.deleted_count
+
+    # 4) Có thể thêm ghi log tại đây
+
+    return result
 
 
 def list_meters_with_status(date_str: str | None = None) -> List[Dict[str, Any]]:
