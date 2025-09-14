@@ -138,8 +138,23 @@ def update_user(user_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
 
 def delete_user(uid: str) -> bool:
     db = get_db()
+    result = {}
     try:
+        oid = to_object_id(uid)
         res = db[COL].delete_one({"_id": to_object_id(uid)})
+        result["user"] = res.deleted_count
+
+        # 2) Query cho các collection con: chấp nhận cả ObjectId và string
+        id_query = {"$in": [oid, str(oid)]}
+
+        # 3) Xoá liên quan (đổi lại tên collection/field nếu của bạn khác)
+        related = [
+            ("user_meters",      "user_id"),
+            ("log", "user_id"),
+        ]
+        for col, field in related:
+            r = db[col].delete_many({field: id_query})
+            result[col] = r.deleted_count
     except Exception:
         return False
     return res.deleted_count == 1
